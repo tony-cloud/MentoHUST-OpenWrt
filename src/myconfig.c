@@ -71,8 +71,8 @@ unsigned restartWait = D_RESTARTWAIT;	/* 失败等待 */
 unsigned startMode = D_STARTMODE;	/* 组播模式 */
 unsigned dhcpMode = D_DHCPMODE;	/* DHCP模式 */
 unsigned maxFail = D_MAXFAIL;	/* 允许失败次数 */
-unsigned logFile = LOG_FILE;	/* log位置 */
-unsigned lockFile = LOCK_FILE;	/* lock位置 */
+static const char logFile = LOG_FILE;	/* log位置 */
+static const char lockFile = LOCK_FILE;	/* lock位置 */
 pcap_t *hPcap = NULL;	/* Pcap句柄 */
 int lockfd = -1;	/* 锁文件描述符 */
 
