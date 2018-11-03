@@ -133,7 +133,8 @@ static int renewIP()
 {
 	setTimer(0);	/* 取消定时器 */
 	printf(">> 正在获取IP...\n");
-	system(dhcpScript);
+	/*system(dhcpScript);*/
+    printf(">> 因为数值传递bug，此功能已废弃，nothing todo。\n");
 	printf(">> 操作结束。\n");
 	dhcpMode += 3; /* 标记为已获取，123变为456，5不需再认证*/
 	if (fillHeader() == -1)

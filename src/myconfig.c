@@ -1,17 +1,20 @@
 /* -*- Mode: C; tab-width: 4; -*- */
 /*
 * Copyright (C) 2009, HustMoon Studio
+* Copyright (C) 2018, tony-cloud Team
 *
 * 文件名称：myconfig.c
 * 摘	要：初始化认证参数
 * 作	者：HustMoon@BYHH
 * 邮	箱：www.ehust@gmail.com
+*
+* 2018 midified by tony. Change default settings for ruijie, improve version.
 */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #else
-static const char *VERSION = "0.3.1";
-static const char *PACKAGE_BUGREPORT = "http://code.google.com/p/mentohust/issues/list";
+static const char *VERSION = "1.0.0";
+static const char *PACKAGE_BUGREPORT = "https://github.com/tony-cloud/MentoHUST/issue";
 #endif
 
 #include "myconfig.h"
@@ -28,18 +31,19 @@ static const char *PACKAGE_BUGREPORT = "http://code.google.com/p/mentohust/issue
 #define ACCOUNT_SIZE		65	/* 用户名密码长度*/
 #define NIC_SIZE			16	/* 网卡名最大长度 */
 #define MAX_PATH			255	/* FILENAME_MAX */
-#define D_TIMEOUT			8	/* 默认超时间隔 */
+#define D_TIMEOUT			10	/* 默认超时间隔 */
 #define D_ECHOINTERVAL		30	/* 默认心跳间隔 */
 #define D_RESTARTWAIT		15	/* 默认重连间隔 */
-#define D_STARTMODE			0	/* 默认组播模式 */
-#define D_DHCPMODE			0	/* 默认DHCP模式 */
+#define D_STARTMODE			1	/* 默认组播模式 */
+#define D_DHCPMODE			3	/* 默认DHCP模式 */
 #define D_DAEMONMODE		0	/* 默认daemon模式 */
-#define D_MAXFAIL			0	/* 默认允许失败次数 */
+#define D_MAXFAIL			10	/* 默认允许失败次数 */
+#define D_MAXFAIL			0	/* 默认不允许多开 */
 
 static const char *D_DHCPSCRIPT = "dhclient";	/* 默认DHCP脚本 */
 static const char *CFG_FILE = "/etc/mentohust.conf";	/* 配置文件 */
-static const char *LOG_FILE = "/tmp/mentohust.log";	/* 日志文件 */
-static const char *LOCK_FILE = "/tmp/mentohust.pid";	/* 锁文件 */
+static const char *LOG_FILE = "/tmp/mentohust.log";	/* 默认日志文件 */
+static const char *LOCK_FILE = "/tmp/mentohust.pid";	/* 默认锁文件 */
 #define LOCKMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)	/* 创建掩码 */
 
 #ifndef NO_NOTIFY
@@ -67,6 +71,8 @@ unsigned restartWait = D_RESTARTWAIT;	/* 失败等待 */
 unsigned startMode = D_STARTMODE;	/* 组播模式 */
 unsigned dhcpMode = D_DHCPMODE;	/* DHCP模式 */
 unsigned maxFail = D_MAXFAIL;	/* 允许失败次数 */
+unsigned logFile = LOG_FILE;	/* log位置 */
+unsigned lockFile = LOCK_FILE;	/* lock位置 */
 pcap_t *hPcap = NULL;	/* Pcap句柄 */
 int lockfd = -1;	/* 锁文件描述符 */
 
@@ -155,8 +161,8 @@ void initConfig(int argc, char **argv)
 	int daemonMode = D_DAEMONMODE;	/* 是否后台运行 */
 
 	printf("\n欢迎使用MentoHUST\t版本: %s\n"
-			"Copyright (C) 2009-2010 HustMoon Studio\n"
-			"人到华中大，有甜亦有辣。明德厚学地，求是创新家。\n"
+			"Copyright (C) 2008-2010 HustMoon Studio\n"
+			"Copyright (C) 2008-2018 tony-cloud Team\n"
 			"Bug report to %s\n\n", VERSION, PACKAGE_BUGREPORT);
 	saveFlag = (readFile(&daemonMode)==0 ? 0 : 1);
 	readArg(argc, argv, &saveFlag, &exitFlag, &daemonMode);
@@ -197,7 +203,7 @@ void initConfig(int argc, char **argv)
 		scanf("%s", userName);
 		printf("?? 请输入密码: ");
 		scanf("%s", password);
-		printf("?? 请选择组播地址(0标准 1锐捷私有 2赛尔): ");
+		printf("?? 请选择组播地址(0标准 1锐捷 2赛尔): ");
 		scanf("%u", &startMode);
 		startMode %= 3;
 		printf("?? 请选择DHCP方式(0不使用 1二次认证 2认证后 3认证前): ");
@@ -313,6 +319,10 @@ static void readArg(char argc, char **argv, int *saveFlag, int *exitFlag, int *d
 				strncpy(dataFile, str+2, sizeof(dataFile)-1);
 			else if (c == 'c')
 				strncpy(dhcpScript, str+2, sizeof(dhcpScript)-1);
+            else if (c == 'x')
+				strncpy(logFile, str+2, sizeof(logFile)-1);
+            else if (c == 'y')
+				strncpy(lockFile, str+2, sizeof(lockFile)-1);
 			else if (c=='v' && strlen(str+2)>=3) {
 				unsigned ver[2];
 				if (sscanf(str+2, "%u.%u", ver, ver+1) != EOF) {
@@ -385,6 +395,8 @@ static void showHelp(const char *fileName)
 		"\t-v 客户端版本号[默认0.00表示兼容xrgsu]\n"
 		"\t-f 自定义数据文件[默认不使用]\n"
 		"\t-c DHCP脚本[默认dhclient]\n"
+        "\t-x log位置[默认/tmp/mentohust.log]\n"
+        "\t-y lock位置[默认/tmp/mentohust.log]\n"
 		"例如:\t%s -uusername -ppassword -neth0 -i192.168.0.1 -m255.255.255.0 -g0.0.0.0 -s0.0.0.0 -o0.0.0.0 -t8 -e30 -r15 -a0 -d1 -b0 -v4.10 -fdefault.mpf -cdhclient\n"
 		"注意：使用时请确保是以root权限运行！\n\n";
 	printf(helpString, fileName, fileName);
@@ -538,7 +550,7 @@ static void saveConfig(int daemonMode)
 static void checkRunning(int exitFlag, int daemonMode)
 {
 	struct flock fl;
-	lockfd = open (LOCK_FILE, O_RDWR|O_CREAT, LOCKMODE);
+	lockfd = open (lockFile, O_RDWR|O_CREAT, LOCKMODE);
 	if (lockfd < 0) {
 		perror("!! 打开锁文件失败");	/* perror真的很好啊，以前没用它真是太亏了 */
 		goto error_exit;
@@ -571,8 +583,8 @@ static void checkRunning(int exitFlag, int daemonMode)
 		if (daemon(0, (daemonMode+1)%2))
 			perror("!! 后台运行失败");
 		else if (daemonMode == 3) {
-			freopen(LOG_FILE, "w", stdout);
-			freopen(LOG_FILE, "a", stderr);
+			freopen(logFile, "w", stdout);
+			freopen(logFile, "a", stderr);
 		}
 	}
 	fl.l_type = F_WRLCK;
